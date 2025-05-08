@@ -1,3 +1,5 @@
+&#x20;
+
 [![Tests](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml/badge.svg)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml)
 [![CodeQL](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml)
 
@@ -93,8 +95,8 @@ Use these metrics for budgeting, forecasting, and performance reviews.
 
 Your CI workflows live in the repository under `.github/workflows/`:
 
-* **`tests.yml`**: Runs your test suite on every push and pull request. Once you push this file to your `main` branch, GitHub Actions will automatically execute it and populate the Tests badge.
-* **`codeql-analysis.yml`**: Executes GitHub CodeQL analysis on every push, helping you catch security and quality issues early. After your first workflow run, the CodeQL badge will update.
+* `tests.yml`: Runs your test suite on every push and pull request. Once you push this file to your `main` branch, GitHub Actions will automatically execute it and populate the Tests badge. on every push and pull request. Once you push this file to your `main` branch, GitHub Actions will automatically execute it and populate the Tests badge.
+* `codeql-analysis.yml`: Executes GitHub CodeQL analysis on every push, helping you catch security and quality issues early. After your first workflow run, the CodeQL badge will update. on every push, helping you catch security and quality issues early. After your first workflow run, the CodeQL badge will update.
 
 To trigger these workflows, simply **push** or **create a pull request** to `main`. You should then see the badges update on your README once the runs complete.
 
@@ -109,3 +111,4 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 ## 📄 License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
