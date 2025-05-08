@@ -1,7 +1,5 @@
-&#x20;
-
-[![Tests](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml/badge.svg)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml)
-[![CodeQL](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml)
+[![Tests](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml)
 
 # Sales Email Manager Agent
 
@@ -111,4 +109,3 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 ## 📄 License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
