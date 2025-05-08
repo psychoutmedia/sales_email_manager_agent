@@ -1,5 +1,5 @@
-[![Tests](https://github.com/psychoutmedia/sales-email-manager/actions/workflows/tests.yml/badge.svg)](https://github.com/psychoutmedia/sales-email-manager/actions/workflows/tests.yml)
-[![CodeQL](https://github.com/psychoutmedia/sales-email-manager/actions/workflows/codeql-analysis.yml/badge.svg)](https://psychoutmedia/your-org/sales-email-manager/actions/workflows/codeql-analysis.yml)
+[![Tests](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml/badge.svg)](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/psychoutmedia/sales_email_manager_agent/actions/workflows/codeql-analysis.yml/badge.svg)](https://psychoutmedia/your-org/sales_email_manager_agent/actions/workflows/codeql-analysis.yml)
 
 # Sales Email Manager Agent
 
