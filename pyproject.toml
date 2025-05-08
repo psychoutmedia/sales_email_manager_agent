@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "complai-salesbot"
+version = "0.1.0"
+description = "Cost-aware, multi-agent sales-email generator for ComplAI (SOC2 SaaS)."
+readme = "README.md"
+authors = [{ name = "Mark Stephenson", email = "stephensonmark1@gmail.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+
+dependencies = [
+  "openai-agents>=0.3",
+  "openai>=1.14",
+  "python-dotenv",
+  "sendgrid>=6.11",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "black"]
+
+
+

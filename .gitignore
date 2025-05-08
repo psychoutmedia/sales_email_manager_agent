@@ -1,0 +1,5 @@
+# existing patterns ...
+.env
+usage_log.csv
+__pycache__/
+*.pyc

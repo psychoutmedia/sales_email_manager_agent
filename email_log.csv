@@ -1,0 +1,2 @@
+timestamp,month,model,prompt_tokens,completion_tokens,total_tokens,cost_gbp
+2025-05-08T19:43:05.226190+00:00,2025-05,gpt-4o-mini,0,0,1188,0.0
