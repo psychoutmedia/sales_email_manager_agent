@@ -1,5 +1,6 @@
-[![Tests](https://github.com/your-org/sales-email-manager/actions/workflows/tests.yml/badge.svg)](https://github.com/your-org/sales-email-manager/actions/workflows/tests.yml) [![CodeQL](https://github.com/your-org/sales-email-manager/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/your-org/sales-email-manager/actions/workflows/codeql-analysis.yml)
-git add .
+[![Tests](https://github.com/your-org/sales-email-manager/actions/workflows/tests.yml/badge.svg)](https://github.com/your-org/sales-email-manager/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/your-org/sales-email-manager/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/your-org/sales-email-manager/actions/workflows/codeql-analysis.yml)
+
 # Sales Email Manager Agent
 
 A powerful Python tool that leverages OpenAI agents and SendGrid to automate cold email outreach, enforce budget limits, and capture detailed usage analytics for recruiters and development teams.
