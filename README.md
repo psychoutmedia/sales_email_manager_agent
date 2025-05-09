@@ -5,13 +5,15 @@
 
 A powerful Python tool that leverages OpenAI agents, custom agent tools, and seamless handoff orchestration to automate cold email outreach, enforce budget limits, and capture detailed usage analytics for recruiters and development teams.
 
-> **Elevator pitch:** A robust AI-driven sales email manager that crafts, sends, and monitors outreach with built-in budget control, usage analytics, and pluggable persona tools.
+> **Elevator pitch:** A robust AI-driven sales email manager that crafts, sends, and monitors outreach with built-in budget control, usage analytics, multi-model support, and pluggable persona tools.
 
 ---
 
 ## 🔍 Key Features Demonstrated
 
 * **Modular Agent Framework**: Utilizes multiple GPT-4o-mini personas (Professional, Engaging, Busy) orchestrated by a manager agent to generate optimized email copy.
+* **Multi-Model LLM Tools**: Side-by-side integration with five backends—including OpenAI GPT-4o-mini, Google Gemini 2.0 Flash, DeepSeek Chat, and Groq Llama‑3.3—so you can compare performance and pick the best responder.
+* **Multi-Model Support**: Integrates with **five** LLM backends—OpenAI GPT-4o-mini, Google Gemini 2.0 Flash, DeepSeek Chat, Groq Llama‑3.3‑70b, and more—for side-by-side performance comparisons and best-response selection.
 * **Agent Tools Ecosystem**: Three specialized sales agent tools—`ColdEmailPersonaPro`, `ColdEmailPersonaEngage`, and `ColdEmailPersonaBusy`—each optimized for different tones and buyer profiles.
 * **Intelligent Tool Orchestration & Handoffs**: The Sales Manager agent automatically invokes each persona tool in sequence, evaluates their outputs, and selects the best-performing email. Once chosen, it hands off to the **Email Manager** agent for formatting, dispatch, and delivery tracking.
 * **Automated Sending**: Integrated SendGrid function-tool handles email dispatch, complete with error handling, retry logic, and delivery status callbacks.
@@ -24,10 +26,11 @@ A powerful Python tool that leverages OpenAI agents, custom agent tools, and sea
 
 ## 🆕 What's New in This Release
 
-* **Custom Agent Tools**: Three new pluggable agent tools (`ColdEmailPersonaPro`, `ColdEmailPersonaEngage`, `ColdEmailPersonaBusy`) that specialize in tone, style, and industry-specific messaging.
-* **Handoff Architecture**: Seamless agent-to-agent handoffs—Sales Manager → Email Manager—decoupling email content generation from dispatch logic.
-* **Enhanced Configuration**: New `.env` variables to customize agent selection logic, introduce new persona tools, and control handoff parameters.
-* **Extensible Tool Registry**: Auto-discover and register any new agent tool by subclassing `YourToolBaseClass`—no manual updates needed in the main script.
+* **Multi-Model Handoff**: Sales Manager now dynamically distributes prompts across five distinct LLM tools for broad coverage and selects the top-performing response.
+* **Custom Agent Tools**: Three pluggable tools (`ColdEmailPersonaPro`, `ColdEmailPersonaEngage`, `ColdEmailPersonaBusy`) specializing in tone and industry messaging.
+* **Agent-to-Agent Handoff Architecture**: Streamlined pipeline—Sales Manager → Email Manager—decouples content generation from formatting and dispatch.
+* **Enhanced Configuration**: Opt into new LLM endpoints and persona tools via `.env` flags; easily extend with new tools without editing core logic.
+* **Extensible Tool Registry**: Auto-discover new agent tools by subclassing `YourToolBaseClass`—no manual main-script updates needed.
 
 ---
 
@@ -66,7 +69,7 @@ MAX_BUDGET_GBP=10.0
 CSV_LOG_FILE=usage_log.csv
 AGENT_TOOLS=ColdEmailPersonaPro,ColdEmailPersonaEngage,ColdEmailPersonaBusy
 HANDOFF_EMAIL_MANAGER=true
-```
+```  
 
 ---
 
@@ -85,21 +88,18 @@ python sales_email_manager_agent.py
 
 ## 🛠️ Agent Tools & Handoffs
 
-1. **Sales Manager Agent** (`sales_manager`)
+1. **Sales Manager Agent** (`sales_manager`)  
+   - Invokes each persona tool listed in `AGENT_TOOLS`, compares generated drafts, and picks the winner.
+   - Hands off payload to **Email Manager Agent**.
 
-   * Invokes each persona tool listed in `AGENT_TOOLS`, compares generated drafts, and picks the winner.
-   * Hands off payload to **Email Manager Agent**.
+2. **Email Manager Agent** (`email_manager`)  
+   - Formats the selected draft into HTML, populates recipient data, and calls the SendGrid tool.
+   - Logs delivery status back to the manager.
 
-2. **Email Manager Agent** (`email_manager`)
-
-   * Formats the selected draft into HTML, populates recipient data, and calls the SendGrid tool.
-   * Logs delivery status back to the manager.
-
-3. **Persona Tools**
-
-   * `ColdEmailPersonaPro`: Formal, consultative tone.
-   * `ColdEmailPersonaEngage`: Conversational, benefit-led tone.
-   * `ColdEmailPersonaBusy`: Short, to-the-point, high-level executive summary.
+3. **Persona Tools**  
+   - `ColdEmailPersonaPro`: Formal, consultative tone.  
+   - `ColdEmailPersonaEngage`: Conversational, benefit-led tone.  
+   - `ColdEmailPersonaBusy`: Short, to-the-point, high-level executive summary.
 
 Adding a new persona tool is as simple as subclassing `YourToolBaseClass` and including it in the `AGENT_TOOLS` list.
 
@@ -127,7 +127,7 @@ Use these metrics for budgeting, forecasting, and performance reviews.
 
 Your CI workflows live in the repository under `.github/workflows/`:
 
-* `tests.yml`: Runs your test suite on every push and pull request.
+* `tests.yml`: Runs your test suite on every push and pull request.  
 * `codeql-analysis.yml`: Executes GitHub CodeQL analysis on every push.
 
 To trigger these workflows, simply **push** or **create a pull request** to `main`. You should then see the badges update on your README once the runs complete.
