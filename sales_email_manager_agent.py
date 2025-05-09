@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-from agents import Agent, Runner, trace, function_tool
+from openai import AsyncOpenAI
+from agents import Agent, Runner, trace, function_tool, OpenAIChatCompletionsModel
 import sendgrid
 from sendgrid.helpers.mail import Mail, Email, To, Content
 import asyncio
@@ -7,138 +8,132 @@ import os
 import csv
 import datetime
 from datetime import timezone
+import re
 
-# ── Load environment & CSV settings ─────────────────────────────
+# ── Load env and CSV settings ───────────────────────────────────
+# load_dotenv reads your .env file and sets environment variables accordingly
 load_dotenv(override=True)
 USAGE_LOG_FILE = os.getenv("CSV_LOG_FILE", "usage_log.csv")
 
-# ── Agent personas ───────────────────────────────────────────────
-instructions1 = (
-    "You are a sales agent working for ComplAI, a company that provides a SaaS "
-    "tool for ensuring SOC2 compliance and preparing for audits, powered by AI. "
-    "You write professional, serious cold emails."
+# ── Check for API keys ───────────────────────────────────────────
+for name, var in [("OpenAI", "OPENAI_API_KEY"),
+                  ("Google", "GOOGLE_API_KEY"),
+                  ("DeepSeek", "DEEPSEEK_API_KEY"),
+                  ("Groq", "GROQ_API_KEY")]:
+    val = os.getenv(var)
+    if val:
+        print(f"{name} API Key exists and begins {val[:8]}")
+    else:
+        print(f"{name} API Key not set{' (optional)' if name in ['Google','DeepSeek','Groq'] else ''}")
+
+# ── Cold-email persona instructions ──────────────────────────────
+instructions1 = ("You are a sales agent for ComplAI, writing professional, serious cold emails.")
+instructions2 = ("You are a humorous, engaging sales agent for ComplAI, writing witty cold emails.")
+instructions3 = ("You are a busy sales agent for ComplAI, writing concise, to-the-point cold emails.")
+
+# ── Configure alternative LLM endpoints ─────────────────────────
+GEMINI_BASE_URL   = "https://generativelanguage.googleapis.com/v1beta/openai/"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+GROQ_BASE_URL     = "https://api.groq.com/openai/v1"
+
+deepseek_client = AsyncOpenAI(base_url=DEEPSEEK_BASE_URL, api_key=os.getenv("DEEPSEEK_API_KEY"))
+gemini_client   = AsyncOpenAI(base_url=GEMINI_BASE_URL, api_key=os.getenv("GOOGLE_API_KEY"))
+groq_client     = AsyncOpenAI(base_url=GROQ_BASE_URL, api_key=os.getenv("GROQ_API_KEY"))
+
+deepseek_model = OpenAIChatCompletionsModel("deepseek-chat", openai_client=deepseek_client)
+gemini_model   = OpenAIChatCompletionsModel("gemini-2.0-flash", openai_client=gemini_client)
+llama3_model   = OpenAIChatCompletionsModel("llama-3.3-70b-versatile", openai_client=groq_client)
+
+# ── Instantiate your 12 sales-agent personas ─────────────────────
+sales_agent1  = Agent("Professional Sales Agent", instructions1, model="gpt-4o-mini")
+sales_agent2  = Agent("Engaging Sales Agent",    instructions2, model="gpt-4o-mini")
+sales_agent3  = Agent("Busy Sales Agent",        instructions3, model="gpt-4o-mini")
+
+sales_agent4  = Agent("Professional Sales Agent", instructions1, model=deepseek_model)
+sales_agent5  = Agent("Engaging Sales Agent",    instructions2, model=deepseek_model)
+sales_agent6  = Agent("Busy Sales Agent",        instructions3, model=deepseek_model)
+
+sales_agent7  = Agent("Professional Sales Agent", instructions1, model=gemini_model)
+sales_agent8  = Agent("Engaging Sales Agent",    instructions2, model=gemini_model)
+sales_agent9  = Agent("Busy Sales Agent",        instructions3, model=gemini_model)
+
+sales_agent10 = Agent("Professional Sales Agent", instructions1, model=llama3_model)
+sales_agent11 = Agent("Engaging Sales Agent",    instructions2, model=llama3_model)
+sales_agent12 = Agent("Busy Sales Agent",        instructions3, model=llama3_model)
+
+all_sales_agents = [
+    sales_agent1, sales_agent2, sales_agent3,
+    sales_agent4, sales_agent5, sales_agent6,
+    sales_agent7, sales_agent8, sales_agent9,
+    sales_agent10, sales_agent11, sales_agent12,
+]
+
+# ── Helper to sanitize tool names ────────────────────────────────
+def sanitize(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]", "_", name)
+
+# ── Email-formatter & sender (HTML) pipeline ────────────────────
+subject_instructions = (
+    "Write a concise, response-provoking subject for the given cold-email body."
 )
-instructions2 = (
-    "You are a humorous, engaging sales agent working for ComplAI, a company "
-    "that provides a SaaS tool for ensuring SOC2 compliance and preparing for "
-    "audits, powered by AI. You write witty, engaging cold emails that are "
-    "likely to get a response."
-)
-instructions3 = (
-    "You are a busy sales agent working for ComplAI, a company that provides a "
-    "SaaS tool for ensuring SOC2 compliance and preparing for audits, powered "
-    "by AI. You write concise, to-the-point cold emails."
+html_instructions = (
+    "Convert the plain-text cold-email body (may contain markdown) into a clean HTML email body."
 )
 
-sales_agent1 = Agent(
-    name="Professional Sales Agent", instructions=instructions1, model="gpt-4o-mini"
-)
-sales_agent2 = Agent(
-    name="Engaging Sales Agent", instructions=instructions2, model="gpt-4o-mini"
-)
-sales_agent3 = Agent(
-    name="Busy Sales Agent", instructions=instructions3, model="gpt-4o-mini"
-)
+subject_writer = Agent("Email Subject Writer", subject_instructions, model="gpt-4o-mini")
+html_converter = Agent("HTML Email Converter", html_instructions, model="gpt-4o-mini")
 
+subject_tool = subject_writer.as_tool("subject_writer", "Generate email subject")
+html_tool    = html_converter.as_tool("html_converter", "Convert text to HTML email body")
 
-# ── SendGrid function-tool (unchanged) ────────────────────────────
 @function_tool
-def send_email(body: str):
-    """Send out an email with the given body to all sales prospects."""
-    sg = sendgrid.SendGridAPIClient(api_key=os.environ["SENDGRID_API_KEY"])
-    from_email = Email("stephensonmark1@gmail.com")
-    to_email = To("stephensonmark1@gmail.com")
-    content = Content("text/plain", body)
-    mail = Mail(from_email, to_email, "Sales email", content).get()
+def send_html_email(subject: str, html_body: str) -> dict:
+    sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))
+    mail = Mail(
+        from_email=Email("stephensonmark1@gmail.com"),
+        to_emails=To("stephensonmark1@gmail.com"),
+        subject=subject,
+        html_content=Content("text/html", html_body)
+    ).get()
     sg.client.mail.send.post(request_body=mail)
     return {"status": "success"}
 
+email_tools = [subject_tool, html_tool, send_html_email]
 
-# ── Build tools list via loop ─────────────────────────────────────
-description = "Write a cold sales email"
-sales_agents = [sales_agent1, sales_agent2, sales_agent3]
-
-tools = [
-    *(
-        agent.as_tool(f"sales_agent{i}", description)
-        for i, agent in enumerate(sales_agents, 1)
+email_manager = Agent(
+    name="Email Manager",
+    instructions=(
+        "Use subject_writer to craft a subject, then html_converter to make the HTML body, "
+        "and finally call send_html_email(subject, html_body)."
     ),
-    send_email,
-]
-
-# ── Sales-manager agent ───────────────────────────────────────────
-manager_instructions = (
-    "You are a sales manager at ComplAI. You **never** write emails yourself; "
-    "you must use the tools provided. Try each sales_agent tool once, pick the "
-    "single best email, then call send_email exactly once with that email."
+    tools=email_tools,
+    model="gpt-4o-mini"
 )
 
+# ── Build only the 12 cold-email generator tools ─────────────────
+description = "Generate a cold sales email body"
+sales_tools = []
+for idx, agent in enumerate(all_sales_agents, start=1):
+    raw = getattr(agent.model, "model", str(agent.model))
+    tag = sanitize(raw)
+    tool_name = f"sales_agent{idx}_{tag}"
+    sales_tools.append(agent.as_tool(tool_name, description))
+
+# ── Sales Manager with handoff to Email Manager ────────────────
+manager_instructions = (
+    "You are a sales manager at ComplAI. Invoke each sales_agent tool once to draft cold emails, "
+    "select the single best draft, then hand off to the Email Manager agent with that draft."
+)
 sales_manager = Agent(
     name="Sales Manager",
     instructions=manager_instructions,
-    tools=tools,
-    model="gpt-4o-mini",
+    tools=sales_tools,
+    handoffs=[email_manager],
+    handoff_description="Handoff chosen body to Email Manager",
+    model="gpt-4o-mini"
 )
-# NEW HANDOFF AND TOOLS BLOCK
-subject_instructions = "You can write a subject for a cold sales email. \
-You are given a message and you need to write a subject for an email that is likely to get a response."
 
-html_instructions = "You can convert a text email body to an HTML email body. \
-You are given a text email body which might have some markdown \
-and you need to convert it to an HTML email body with simple, clear, compelling layout and design."
-
-subject_writer = Agent(name="Email subject writer", instructions=subject_instructions, model="gpt-4o-mini")
-subject_tool = subject_writer.as_tool(tool_name="subject_writer", tool_description="Write a subject for a cold sales email")
-
-html_converter = Agent(name="HTML email body converter", instructions=html_instructions, model="gpt-4o-mini")
-html_tool = html_converter.as_tool(tool_name="html_converter",tool_description="Convert a text email body to an HTML email body")
-
-@function_tool
-def send_html_email(subject: str, html_body: str) -> dict[str, str]:
-    """ Send out an email with the given subject and HTML body to all sales prospects """
-    sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
-    from_email = Email("stephensonmark1@gmail.com")  # Change to your verified sender
-    to_email = To("stephensonmark1@gmail.com")  # Change to your recipient
-    content = Content("text/html", html_body)
-    mail = Mail(from_email, to_email, subject, content).get()
-    response = sg.client.mail.send.post(request_body=mail)
-    return {"status": "success"}
-
-tools = [subject_tool, html_tool, send_html_email]
-
-instructions ="You are an email formatter and sender. You receive the body of an email to be sent. \
-You first use the subject_writer tool to write a subject for the email, then use the html_converter tool to convert the body to HTML. \
-Finally, you use the send_html_email tool to send the email with the subject and HTML body."
-
-
-emailer_agent = Agent(
-    name="Email Manager",
-    instructions=instructions,
-    tools=tools,
-    model="gpt-4o-mini",
-    handoff_description="Convert an email to HTML and send it")
-
-
-handoffs = [emailer_agent]
-
-sales_manager_instructions = "You are a sales manager working for ComplAI. You use the tools given to you to generate cold sales emails. \
-You never generate sales emails yourself; you always use the tools. \
-You try all 3 sales agent tools at least once before choosing the best one. \
-You can use the tools multiple times if you're not satisfied with the results from the first try. \
-You select the single best email using your own judgement of which email will be most effective. \
-After picking the email, you handoff to the Email Manager agent to format and send the email."
-
-
-sales_manager = Agent(
-    name="Sales Manager",
-    instructions=sales_manager_instructions,
-    tools=tools,
-    handoffs=handoffs,
-    model="gpt-4o-mini")
-
-#END OF NEW TOOL AND HANDOFF BLOCK
-
-# ── Runner + USAGE logging ────────────────────────────────────────
+# ── Runner + usage logging ──────────────────────────────────────
 async def main():
     message = "Send a cold sales email addressed to 'Dear CEO' from Mark Stephenson"
     with trace("Automated SDR"):
@@ -146,64 +141,31 @@ async def main():
 
     print("\nFINAL OUTPUT:\n", result.final_output)
 
-    # — Extract the last LLM response’s usage —
-    raw = result.raw_responses[-1]
-    usage = getattr(
-        raw, "usage", raw
-    )  # if raw.usage missing, assume raw is a dict-like
+    # Extract usage
+    raw   = result.raw_responses[-1]
+    usage = getattr(raw, "usage", raw)
 
-    # Helper to fetch either attr or dict key
-    def _get(u, *names, default=0):
-        for name in names:
-            if hasattr(u, name):
-                return getattr(u, name)
-            if isinstance(u, dict) and name in u:
-                return u[name]
+    def _get(u, *keys, default=0):
+        for k in keys:
+            if hasattr(u, k): return getattr(u, k)
+            if isinstance(u, dict) and k in u: return u[k]
         return default
 
-    prompt_tokens = _get(usage, "prompt_tokens", "prompt_token_count")
-    completion_tokens = _get(usage, "completion_tokens", "completion_token_count")
-    total_tokens = _get(
-        usage,
-        "total_tokens",
-        "total_token_count",
-        default=prompt_tokens + completion_tokens,
-    )
-    cost_gbp = _get(usage, "cost_gbp", "cost", "total_cost", default=0.0)
+    p_tokens = _get(usage, "prompt_tokens", "prompt_token_count")
+    c_tokens = _get(usage, "completion_tokens", "completion_token_count")
+    total    = _get(usage, "total_tokens", "total_token_count", default=p_tokens + c_tokens)
+    cost     = _get(usage, "cost_gbp", "total_cost", default=0.0)
 
-    # — Prepare log row —
-    timestamp = datetime.datetime.now(timezone.utc).isoformat()
-    month = timestamp[:7]  # "YYYY-MM"
-    model = sales_manager.model  # "gpt-4o-mini"
+    ts    = datetime.datetime.now(timezone.utc).isoformat()
+    month = ts[:7]
+    model = sales_manager.model
 
-    # — Append to CSV (with header if new) —
-    file_exists = os.path.isfile(USAGE_LOG_FILE)
-    with open(USAGE_LOG_FILE, mode="a", newline="", encoding="utf-8") as f:
+    new = not os.path.exists(USAGE_LOG_FILE)
+    with open(USAGE_LOG_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(
-                [
-                    "timestamp",
-                    "month",
-                    "model",
-                    "prompt_tokens",
-                    "completion_tokens",
-                    "total_tokens",
-                    "cost_gbp",
-                ]
-            )
-        writer.writerow(
-            [
-                timestamp,
-                month,
-                model,
-                prompt_tokens,
-                completion_tokens,
-                total_tokens,
-                cost_gbp,
-            ]
-        )
-
+        if new:
+            writer.writerow(["timestamp","month","model","prompt_tokens","completion_tokens","total_tokens","cost_gbp"])
+        writer.writerow([ts, month, model, p_tokens, c_tokens, total, cost])
 
 if __name__ == "__main__":
     asyncio.run(main())
